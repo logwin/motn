@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier des signalements — VTES Mobile</title>
+<style>
+  :root{
+    --ink:#08080a; --panel:#120d0f; --panel2:#180f12; --line:#2a1d20;
+    --gold:#b8975a; --goldlit:#e7c56b; --bone:#ddd6c6; --ash:#8f877a;
+    --blood:#5c2121; --bloodlit:#8d3232;
+    --ok:#5f8f5a; --warn:#c9a24a; --bad:#c05a5a; --cool:#5a7f9c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--bone);
+       font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+  input[type=checkbox]{accent-color:var(--gold);width:15px;height:15px;flex:0 0 auto}
+  a{color:var(--goldlit)}
+  button,select,input,textarea{font:inherit;color:var(--bone);
+       background:#0d090a;border:1px solid var(--line);border-radius:3px;padding:6px 9px}
+  button{cursor:pointer;border-color:#33232700;background:#1a1113;border:1px solid var(--line)}
+  button:hover{border-color:var(--gold);color:var(--goldlit)}
+  button.primary{background:#33161a;border-color:var(--gold);color:var(--goldlit);font-weight:600}
+  button.ghost{background:transparent}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  textarea{width:100%;min-height:220px;resize:vertical;font-family:Consolas,ui-monospace,monospace;font-size:13px}
+
+  header{display:flex;align-items:center;gap:14px;padding:12px 18px;
+         background:linear-gradient(180deg,#1a1013,#0d0809);border-bottom:1px solid var(--gold)}
+  header h1{margin:0;font-size:17px;letter-spacing:.06em;color:var(--goldlit);font-weight:600}
+  header .sub{color:var(--ash);font-size:12px}
+  .spacer{flex:1}
+  .badge{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:99px;
+         font-size:12px;color:var(--ash)}
+  .badge b{color:var(--goldlit)}
+
+  main{display:grid;grid-template-columns:290px 1fr;gap:0;height:calc(100vh - 58px)}
+  aside{border-right:1px solid var(--line);overflow:auto;padding:14px}
+  section.list{overflow:auto;padding:14px 18px 120px}
+
+  .block{margin-bottom:18px}
+  .block h2{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--gold);
+            margin:0 0 8px;font-weight:600}
+  .filters label{display:block;margin-bottom:8px;font-size:12px;color:var(--ash)}
+  .filters label:has(input[type=checkbox]){display:flex;align-items:center;gap:7px}
+  .filters select,.filters input[type=text]{width:100%}
+  .chip{display:inline-block;margin:0 6px 6px 0;padding:3px 9px;border:1px solid var(--line);
+        border-radius:99px;font-size:12px;cursor:pointer;color:var(--ash);background:#0d090a}
+  .chip.on{border-color:var(--gold);color:var(--goldlit);background:#221317}
+
+  .cluster{display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid transparent;
+           border-radius:3px;cursor:pointer;align-items:baseline}
+  .cluster:hover{background:#160e10}
+  .cluster.on{border-color:var(--gold);background:#221317}
+  .cluster .n{color:var(--ash);font-size:12px;white-space:nowrap}
+  .cluster .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cluster .dot{color:var(--bad)}
+
+  .rep{border:1px solid var(--line);border-left:3px solid var(--line);border-radius:4px;
+       background:var(--panel);padding:11px 13px;margin-bottom:10px}
+  .rep.sel{border-color:var(--gold);background:#180f12}
+  .rep.new{border-left-color:var(--bad)}
+  .rep.triaged{border-left-color:var(--warn)}
+  .rep.in_progress{border-left-color:var(--cool)}
+  .rep.fixed{border-left-color:var(--ok)}
+  .rep.wontfix,.rep.invalid,.rep.duplicate{border-left-color:#4a4148}
+  .rep .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .rep .card{font-weight:600;color:var(--goldlit)}
+  .rep .meta{color:var(--ash);font-size:12px}
+  .rep .msg{margin:8px 0 0;white-space:pre-wrap;color:var(--bone)}
+  .rep .ctx{margin-top:6px;color:#6f6862;font-size:11px;font-family:Consolas,monospace}
+  .rep .row{display:flex;gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap}
+  .rep .row input[type=text]{flex:1;min-width:200px}
+  .pill{font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--ash)}
+  .pill.kind-bug{color:#d78d8d;border-color:#5c2b2b}
+  .pill.kind-ux{color:#e0b56a;border-color:#5f4720}
+  .pill.kind-translation{color:#8db6d7;border-color:#2b4260}
+  .pill.kind-other{color:#b9ab8d;border-color:#4a4030}
+  .pill.shot{color:#c7a2e0;border-color:#452a5c}
+  /* Capture du signalement, dépliée sous le message : bornée en hauteur pour qu'une image
+     plein écran ne repousse pas les commandes du signalement hors de vue. */
+  .shotbox{margin:8px 0 2px}
+  .shotbox img{max-width:100%;max-height:420px;border:1px solid var(--line);border-radius:4px;display:block}
+  .pill.pub{color:var(--ok);border-color:#33512f}
+  .pill.replayable{color:var(--goldlit);border-color:var(--gold)}
+
+  .bar{position:fixed;left:290px;right:0;bottom:0;display:flex;gap:10px;align-items:center;
+       padding:11px 18px;background:#140d10;border-top:1px solid var(--gold);flex-wrap:wrap}
+  .bar .count{color:var(--goldlit);font-weight:600}
+
+  dialog{background:var(--panel2);color:var(--bone);border:1px solid var(--gold);border-radius:5px;
+         width:min(760px,92vw);padding:0}
+  dialog::backdrop{background:rgba(4,3,4,.82)}
+  dialog h3{margin:0;padding:14px 18px;border-bottom:1px solid var(--line);color:var(--goldlit);
+            font-size:15px;letter-spacing:.05em}
+  dialog .body{padding:16px 18px;max-height:70vh;overflow:auto}
+  dialog .foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
+  dialog label{display:block;margin:0 0 12px;font-size:12px;color:var(--ash)}
+  dialog label.inline{display:flex;align-items:center;gap:7px}
+  dialog label input[type=text],dialog label input[type=password]{width:100%;margin-top:4px}
+  .hint{color:var(--ash);font-size:12px;margin:6px 0 0}
+  .note{background:#241d0f;border:1px solid var(--warn);color:#e6d3a3;padding:9px 12px;border-radius:3px;margin-bottom:12px}
+  .err{background:#2a1113;border:1px solid var(--bad);color:#eab9b9;padding:9px 12px;border-radius:3px;margin-bottom:12px}
+  .ok{background:#14210f;border:1px solid var(--ok);color:#c6e0bf;padding:9px 12px;border-radius:3px;margin-bottom:12px}
+  .empty{color:var(--ash);text-align:center;padding:60px 0;font-style:italic}
+  pre.out{background:#0b0809;border:1px solid var(--line);border-radius:3px;padding:11px 13px;
+          font-family:Consolas,ui-monospace,monospace;font-size:12px;color:var(--bone);
+          white-space:pre-wrap;max-height:46vh;overflow:auto;margin:0}
+  dialog#dlgReplay{width:min(1000px,94vw)}
+  pre.path{background:#0b0809;border:1px solid var(--line);border-radius:3px;padding:9px 11px;
+           font-family:Consolas,ui-monospace,monospace;font-size:12px;color:var(--goldlit);
+           white-space:pre-wrap;word-break:break-all;margin:6px 0 12px}
+
+  /* DEUX MODES : « local » (servi par vtes_reports.py, tout est là) et « remote » (page hébergée,
+     Supabase direct : pas de rejeu, pas de dossier IA, pas de réglages — une connexion à la place). */
+  body.remote .only-local{display:none !important}
+  body.local .only-remote{display:none !important}
+  #btnDrawer,#btnDrawerClose{display:none}
+
+  /* TÉLÉPHONE : la colonne des filtres et des cartes devient un tiroir plein écran (bouton ☰),
+     la liste prend toute la largeur, les commandes d'un signalement passent sur deux lignes. */
+  @media (max-width:860px){
+    header{flex-wrap:wrap;gap:8px;padding:10px 12px}
+    header h1{font-size:15px}
+    header .sub{display:none}
+    header .badge{order:9;flex:1 1 100%;text-align:center}
+    #btnDrawer{display:inline-block}
+    main{display:block;height:auto}
+    aside{display:none}
+    body.drawer aside{display:block;position:fixed;inset:0;z-index:20;background:var(--ink);
+                      padding:14px 14px 90px;overflow:auto;border:0}
+    body.drawer #btnDrawerClose{display:block;width:100%;margin-bottom:12px}
+    section.list{padding:10px 10px 150px}
+    .rep{padding:10px 11px}
+    .rep .row input[type=text]{min-width:0;flex:1 1 100%}
+    .rep .row select{flex:1 1 40%;min-width:0}
+    .bar{left:0;padding:9px 10px;gap:8px}
+    .bar input[type=text]{min-width:0;flex:1 1 100%}
+    .bar select{flex:1 1 40%}
+    dialog{width:96vw}
+    dialog .body{max-height:62vh;padding:12px}
+    textarea{min-height:160px}
+    .shotbox img{max-height:60vh}
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="ghost" id="btnDrawer" title="Filtres et cartes signalées">☰</button>
+  <h1>Atelier des signalements</h1>
+  <span class="sub" id="sub">chargement…</span>
+  <span class="spacer"></span>
+  <span class="badge" id="stats"></span>
+  <button class="primary" id="btnPending" title="Sélectionne tout ce qui est traité mais pas encore annoncé">À annoncer</button>
+  <button class="ghost only-local" id="btnInbox" title="Réponses d'analyse déposées dans inbox/">Réponses IA</button>
+  <button class="ghost" id="btnRefresh" title="Relire la table Supabase">↻ Actualiser</button>
+  <button class="ghost" id="btnHistory">Historique</button>
+  <button class="ghost only-local" id="btnCoverage" title="Cartes vérifiées / à surveiller / jamais jouées (télémétrie des parties) et relevé des portes" onclick="location.href='/coverage'">Couverture</button>
+  <button class="ghost only-local" id="btnPlayers" title="Joueurs actifs : signe de vie anonyme des installations au démarrage du jeu" onclick="location.href='/players'">Joueurs</button>
+  <button class="ghost only-local" id="btnSettings">Réglages</button>
+  <button class="ghost only-remote" id="btnLogout" title="Oublier la connexion sur cet appareil">Déconnexion</button>
+</header>
+
+<main>
+  <aside>
+    <button class="ghost" id="btnDrawerClose">Fermer les filtres</button>
+    <div id="banner"></div>
+    <div class="block filters">
+      <h2>Filtrer</h2>
+      <label>Recherche
+        <input type="text" id="fSearch" placeholder="carte, texte, joueur…">
+      </label>
+      <div id="fStatus"></div>
+      <div id="fKind" style="margin-top:8px"></div>
+      <label style="margin-top:10px"><input type="checkbox" id="fUnpublished"> non annoncés seulement</label>
+      <label><input type="checkbox" id="fGroup" checked> trier par carte la plus signalée</label>
+    </div>
+
+    <div class="block">
+      <h2>Cartes signalées</h2>
+      <div id="clusters"></div>
+    </div>
+  </aside>
+
+  <section class="list" id="list"></section>
+</main>
+
+<div class="bar" id="bar" style="display:none">
+  <span class="count" id="selCount"></span>
+  <select id="bulkStatus"><option value="">— statut —</option></select>
+  <select id="bulkSeverity"><option value="">— sévérité —</option></select>
+  <input type="text" id="bulkNote" placeholder="note de dev appliquée à la sélection" style="flex:1;min-width:220px">
+  <button id="btnApply">Appliquer</button>
+  <button class="only-local" id="btnPackage" title="Écrit un dossier markdown + json à faire lire à Claude Code">Dossier d'analyse IA…</button>
+  <button class="primary" id="btnDiscord">Préparer l'annonce Discord…</button>
+  <button class="ghost" id="btnClear">Désélectionner</button>
+</div>
+
+<dialog id="dlgDiscord">
+  <h3>Annonce Discord</h3>
+  <div class="body">
+    <div id="dMsg"></div>
+    <label>Titre du message (FR)
+      <input type="text" id="dTitle" placeholder="Signalements pris en compte — …">
+    </label>
+    <label id="lblTitleEn">Titre du message (EN)
+      <input type="text" id="dTitleEn" placeholder="Reports taken into account — …">
+    </label>
+    <label class="inline"><input type="checkbox" id="dBilingual" checked> ajouter la version anglaise sous la version française</label>
+    <label class="inline"><input type="checkbox" id="dThanks" checked> remercier nommément les joueurs qui ont signalé</label>
+    <p class="hint">Le message part tel quel sur le webhook. Seuls les signalements
+      « corrigé / en cours / hors périmètre » apparaissent ; les autres sont ignorés.
+      Après publication, ils sont marqués comme annoncés.<br>
+      Pour qu'une note de dev ait sa propre traduction, écris-la
+      <code>en français || in English</code> — sans le séparateur, la même note
+      sert dans les deux versions.</p>
+    <textarea id="dContent"></textarea>
+  </div>
+  <div class="foot">
+    <button class="ghost" id="dRegen">Régénérer</button>
+    <button class="ghost" onclick="dlgDiscord.close()">Fermer</button>
+    <button class="primary" id="dSend">Publier sur Discord</button>
+  </div>
+</dialog>
+
+<dialog id="dlgSettings">
+  <h3>Réglages</h3>
+  <div class="body">
+    <div id="sMsg"></div>
+    <label>URL du projet Supabase <span id="sUrlAuto" class="hint" style="display:inline"></span>
+      <input type="text" id="sUrl" placeholder="https://xxxx.supabase.co">
+    </label>
+    <label>Clé secrète — <code>sb_secret_…</code> (Settings → API Keys → Secret keys)
+      ou l'ancienne <code>service_role</code> (onglet Legacy API keys)
+      <input type="password" id="sKey" placeholder="laisser vide pour ne pas changer">
+    </label>
+    <label>Webhook Discord du salon d'annonces
+      <input type="text" id="sHook" placeholder="https://discord.com/api/webhooks/…">
+    </label>
+    <label>Nom affiché du bot
+      <input type="text" id="sUser" placeholder="Archiviste VTES">
+    </label>
+    <p class="hint">Ces valeurs sont écrites dans <code>config.json</code>, à côté du script,
+      et ne quittent jamais la machine. La clé service_role contourne la RLS :
+      ne la mets jamais dans le build Unity ni dans un dépôt public.</p>
+  </div>
+  <div class="foot">
+    <button class="ghost" id="sTest">Tester le webhook</button>
+    <span class="spacer"></span>
+    <button class="ghost" onclick="dlgSettings.close()">Fermer</button>
+    <button class="primary" id="sSave">Enregistrer</button>
+  </div>
+</dialog>
+
+<dialog id="dlgPackage">
+  <h3>Dossier d'analyse</h3>
+  <div class="body" id="pkBody"></div>
+  <div class="foot"><button class="ghost" onclick="dlgPackage.close()">Fermer</button></div>
+</dialog>
+
+<dialog id="dlgInbox">
+  <h3>Réponses d'analyse — validation</h3>
+  <div class="body" id="ibBody"></div>
+  <div class="foot">
+    <button class="ghost" id="ibDiscard">Écarter ce fichier</button>
+    <span class="spacer"></span>
+    <button class="ghost" onclick="dlgInbox.close()">Fermer</button>
+    <button class="primary" id="ibApply">Appliquer les entrées cochées</button>
+  </div>
+</dialog>
+
+<dialog id="dlgReplay">
+  <h3>Rejouer la partie</h3>
+  <div class="body">
+    <div id="rpMsg"></div>
+    <div class="row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <label class="inline" style="margin:0">s'arrêter au tour
+        <input type="number" id="rpTurn" min="0" value="0" style="width:80px"
+               title="0 = rejouer jusqu'au moment du signalement">
+        <span class="hint" style="margin:0">0 = jusqu'au signalement</span>
+      </label>
+      <label class="inline" style="margin:0"><input type="checkbox" id="rpEvents"> journal complet</label>
+      <label class="inline" style="margin:0"><input type="checkbox" id="rpSnapshot"> instantané seul (aucun rejeu)</label>
+      <span class="spacer"></span>
+      <button class="primary" id="rpRun">Lancer</button>
+    </div>
+    <p class="hint">Le rejeu passe par le moteur réel du jeu (<code>Tools/replay</code>).
+      La première exécution le compile — compte une trentaine de secondes.
+      La sortie se termine par un rappel de lecture ; l'essentiel tient en une phrase :
+      <b>les « coups légaux » sont ce que le moteur proposait à l'instant signalé</b> — si le coup
+      attendu par le joueur n'y est pas, soit la règle l'interdit, soit on tient le bug.</p>
+    <pre class="out" id="rpOut">—</pre>
+  </div>
+  <div class="foot"><button class="ghost" onclick="dlgReplay.close()">Fermer</button></div>
+</dialog>
+
+<dialog id="dlgLogin">
+  <h3>Connexion</h3>
+  <div class="body">
+    <div id="lgMsg"></div>
+    <p class="hint" style="margin:0 0 12px">Compte du jeu (e-mail et mot de passe) inscrit comme administrateur
+      des signalements — <code>supabase_card_reports_remote.sql</code>, section 2.</p>
+    <label>E-mail
+      <input type="email" id="lgEmail" autocomplete="username" style="width:100%;margin-top:4px">
+    </label>
+    <label>Mot de passe
+      <input type="password" id="lgPass" autocomplete="current-password" style="width:100%;margin-top:4px">
+    </label>
+  </div>
+  <div class="foot"><button class="primary" id="lgGo">Se connecter</button></div>
+</dialog>
+
+<dialog id="dlgHistory">
+  <h3>Annonces publiées</h3>
+  <div class="body" id="hBody"></div>
+  <div class="foot"><button class="ghost" onclick="dlgHistory.close()">Fermer</button></div>
+</dialog>
+
+<script>
+// MODE DISTANT : build_remote.py remplace ce marqueur par {url, anon_key} pour la page hébergée
+// (GitHub Pages). Servi par vtes_reports.py, il reste null et tout passe par le serveur local.
+const REMOTE = {"url": "https://yoosqngbsdyhocdzzwjj.supabase.co", "anon_key": "sb_publishable_CUOPeEwliBkkj-jAusxIYQ_cM6LL-y8"};
+document.body.classList.add(REMOTE ? "remote" : "local");
+
+const LABEL_STATUS = {
+  new:"nouveau", triaged:"qualifié", in_progress:"en cours", fixed:"corrigé",
+  wontfix:"hors périmètre", duplicate:"doublon", invalid:"invalide"
+};
+const LABEL_KIND = {bug:"dysfonctionnement", ux:"interface", translation:"traduction", other:"autre"};
+const LABEL_SEV = {low:"mineur", medium:"moyen", high:"important", critical:"critique"};
+
+let STATE = {reports:[], config:{}, statuses:[], kinds:[], severities:[], publishable:[]};
+let selection = new Set();
+let filters = {search:"", status:new Set(), kind:new Set(), unpublished:false, cluster:null};
+
+const $ = s => document.querySelector(s);
+const esc = s => (s??"").toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, body){
+  if(REMOTE) return remoteApi(path, body);
+  const opt = body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {};
+  const res = await fetch(path, opt);
+  return await res.json();
+}
+
+function absorb(data, keepSelection){
+  if(data.reports) STATE = Object.assign(STATE, data);
+  if(!keepSelection) selection = new Set([...selection].filter(id => STATE.reports.some(r => String(r.id)===id)));
+  render(data.error, data.published !== undefined ? data : null);
+}
+
+async function load(refresh){
+  $("#sub").textContent = refresh ? "lecture de la table…" : "chargement…";
+  const data = await api("/api/state" + (refresh ? "?refresh=1" : ""));
+  absorb(data);
+  return data;
+}
+
+// ---------------------------------------------------------------- rendu
+
+function fmtDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  if(isNaN(d)) return iso;
+  return d.toLocaleString("fr-FR", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+
+function visible(){
+  const q = filters.search.trim().toLowerCase();
+  return STATE.reports.filter(r => {
+    const st = r.status || "new";
+    if(filters.status.size && !filters.status.has(st)) return false;
+    if(filters.kind.size && !filters.kind.has(r.kind || "other")) return false;
+    if(filters.unpublished && r.published_at) return false;
+    if(filters.cluster !== null && (r.card_name||"").trim().toLowerCase() !== filters.cluster) return false;
+    if(q){
+      const hay = [r.card_name, r.message, r.player_name, r.dev_note, r.context, r.lang]
+        .join(" ").toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function clusters(){
+  const map = new Map();
+  for(const r of STATE.reports){
+    const name = (r.card_name||"").trim();
+    const key = name.toLowerCase();
+    if(!map.has(key)) map.set(key, {key, name: name || "(sans carte)", total:0, pending:0});
+    const c = map.get(key);
+    c.total++;
+    if((r.status||"new") === "new") c.pending++;
+  }
+  const arr = [...map.values()];
+  arr.sort((a,b) => b.pending - a.pending || b.total - a.total || a.name.localeCompare(b.name));
+  return arr;
+}
+
+function render(error, flash){
+  // bandeau
+  const b = [];
+  if(error) b.push(`<div class="err">${esc(error)}</div>`);
+  if(STATE.demo) b.push(`<div class="ok">Mode démo : données factices, rien n'est écrit.</div>`);
+  else if(!REMOTE && !STATE.config.has_key) b.push(`<div class="err">Projet détecté :
+      <b>${esc((STATE.config.supabase_url||"(inconnu)").replace("https://",""))}</b>${STATE.config.url_autodetected?" (lu dans SupabaseAuth.cs)":""}.<br>
+      Il ne manque que la <b>clé secrète</b> — elle n'est pas dans le dépôt (et c'est très bien ainsi) :
+      Supabase → <b>Settings → API Keys</b> → onglet « Secret keys » (<code>sb_secret_…</code>),
+      ou onglet « Legacy API keys » pour l'ancienne <code>service_role</code>. Ouvre <b>Réglages</b>.</div>`);
+  if(flash && flash.published !== undefined && !error)
+    b.push(`<div class="ok">Annonce publiée (${flash.messages} message(s)), ${flash.published} signalement(s) marqué(s).</div>`);
+  $("#banner").innerHTML = b.join("");
+
+  // chips de filtre
+  const chips = (host, values, set, labels) => {
+    host.innerHTML = values.map(v =>
+      `<span class="chip ${set.has(v)?"on":""}" data-v="${v}">${esc(labels[v]||v)}</span>`).join("");
+    host.querySelectorAll(".chip").forEach(el => el.onclick = () => {
+      const v = el.dataset.v;
+      set.has(v) ? set.delete(v) : set.add(v);
+      render();
+    });
+  };
+  chips($("#fStatus"), STATE.statuses||[], filters.status, LABEL_STATUS);
+  chips($("#fKind"), STATE.kinds||[], filters.kind, LABEL_KIND);
+
+  // stats
+  const total = STATE.reports.length;
+  const nw = STATE.reports.filter(r => (r.status||"new")==="new").length;
+  const fixed = STATE.reports.filter(r => r.status==="fixed").length;
+  $("#stats").innerHTML = `<b>${total}</b> signalements · <b>${nw}</b> à traiter · <b>${fixed}</b> corrigés`;
+
+  // « À annoncer » : traité (corrigé / en cours / hors périmètre) mais jamais publié.
+  const pending = awaitingAnnounce();
+  $("#btnPending").textContent = "À annoncer (" + pending.length + ")";
+  $("#btnPending").disabled = pending.length === 0;
+
+  const inbox = STATE.inbox_count || 0;
+  $("#btnInbox").textContent = inbox ? "Réponses IA (" + inbox + ")" : "Réponses IA";
+  $("#btnInbox").className = (inbox ? "primary" : "ghost") + " only-local";
+  $("#sub").textContent = (STATE.fetched_at ? ("lu à " + fmtDate(STATE.fetched_at)) : "")
+    + (STATE.account ? " · " + STATE.account : "");
+
+  // clusters
+  const cl = clusters();
+  $("#clusters").innerHTML = cl.length ? cl.map(c => `
+    <div class="cluster ${filters.cluster===c.key?"on":""}" data-k="${esc(c.key)}">
+      <span class="name">${esc(c.name)}</span>
+      <span class="n">${c.pending?`<span class="dot">${c.pending}</span>/`:""}${c.total}</span>
+    </div>`).join("") : `<div class="hint">aucune carte signalée</div>`;
+  $("#clusters").querySelectorAll(".cluster").forEach(el => el.onclick = () => {
+    filters.cluster = filters.cluster === el.dataset.k ? null : el.dataset.k;
+    document.body.classList.remove("drawer");
+    render();
+  });
+
+  // liste
+  let rows = visible();
+  if($("#fGroup").checked){
+    const rank = new Map(cl.map((c,i) => [c.key, i]));
+    rows = rows.slice().sort((a,b) => {
+      const ka = (a.card_name||"").trim().toLowerCase(), kb = (b.card_name||"").trim().toLowerCase();
+      return (rank.get(ka)??999) - (rank.get(kb)??999)
+          || new Date(b.created_at) - new Date(a.created_at);
+    });
+  } else {
+    rows = rows.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+
+  $("#list").innerHTML = rows.length ? rows.map(r => {
+    const st = r.status || "new", id = String(r.id);
+    const opts = (vals, cur, labels, none) =>
+      (none ? `<option value="">${none}</option>` : "") +
+      vals.map(v => `<option value="${v}" ${cur===v?"selected":""}>${esc(labels[v]||v)}</option>`).join("");
+    return `
+    <div class="rep ${st} ${selection.has(id)?"sel":""}" data-id="${esc(id)}">
+      <div class="top">
+        <input type="checkbox" class="pick" ${selection.has(id)?"checked":""}>
+        <span class="card">${esc((r.card_name||"").trim() || "(sans carte)")}</span>
+        <span class="pill kind-${esc(r.kind||"other")}">${esc(LABEL_KIND[r.kind]||r.kind||"autre")}</span>
+        ${r.dump_kind ? `<span class="pill replayable" title="Ce signalement porte un dump de partie : rejouable">rejouable</span>` : ""}
+        ${r.shot_kb ? `<span class="pill shot" title="Ce signalement porte une capture d'écran (${r.shot_kb} ko)">capture</span>` : ""}
+        ${r.published_at ? `<span class="pill pub">annoncé</span>` : ""}
+        <span class="spacer"></span>
+        <span class="meta">${esc(r.player_name||"anonyme")} · ${esc(r.lang||"?")} · ${fmtDate(r.created_at)}</span>
+      </div>
+      <p class="msg">${esc(r.message||"(aucun texte)")}</p>
+      <div class="ctx">${esc(r.context||"")}${r.card_id?" · id "+r.card_id:""}</div>
+      <div class="shotbox" style="display:none"></div>
+      <div class="row">
+        <select class="st">${opts(STATE.statuses, st, LABEL_STATUS)}</select>
+        <select class="sv">${opts(STATE.severities, r.severity||"", LABEL_SEV, "sévérité —")}</select>
+        <input type="text" class="nt" placeholder="note de dev (reprise dans l'annonce Discord)"
+               value="${esc(r.dev_note||"")}">
+        ${r.dump_kind ? `<button class="replay ghost only-local" title="Rejouer cette partie avec le moteur réel">▶ Rejouer</button>` : ""}
+        ${r.shot_kb ? `<button class="shotbtn ghost" title="Voir l'écran tel qu'il était au signalement">🖼 Capture</button>` : ""}
+        <button class="save ghost">Enregistrer</button>
+      </div>
+    </div>`;
+  }).join("") : `<div class="empty">Aucun signalement ne correspond aux filtres.</div>`;
+
+  $("#list").querySelectorAll(".rep").forEach(el => {
+    const id = el.dataset.id;
+    el.querySelector(".pick").onchange = e => {
+      e.target.checked ? selection.add(id) : selection.delete(id);
+      el.classList.toggle("sel", e.target.checked);
+      renderBar();
+    };
+    const replayBtn = el.querySelector("button.replay");   // « button. » : une pastille porte un nom voisin
+    if(replayBtn) replayBtn.onclick = () => openReplay(id);
+    // CAPTURE D'ÉCRAN : chargée au clic, jamais avec la liste. Elle s'ouvre DANS la carte du
+    // signalement, sous le message — un signalement d'interface se lit avec son image sous les yeux,
+    // pas dans une fenêtre qui masque le texte qu'on compare.
+    const shotBtn = el.querySelector("button.shotbtn");
+    if(shotBtn) shotBtn.onclick = async () => {
+      const box = el.querySelector(".shotbox");
+      if(box.style.display !== "none"){ box.style.display = "none"; shotBtn.textContent = "🖼 Capture"; return; }
+      if(!box.dataset.loaded){
+        shotBtn.disabled = true; box.innerHTML = `<span class="hint">chargement de la capture…</span>`;
+        box.style.display = "block";
+        try{
+          const j = await api("/api/shot?id=" + encodeURIComponent(id));
+          box.innerHTML = j.shot
+            ? `<img src="data:image/${j.shot.startsWith("iVBOR") ? "png" : "jpeg"};base64,${j.shot}" alt="capture du signalement">`
+            : `<span class="hint">aucune capture enregistrée pour ce signalement.</span>`;
+          box.dataset.loaded = "1";
+        }catch(e){ box.innerHTML = `<span class="hint">capture illisible : ${esc(String(e))}</span>`; }
+        shotBtn.disabled = false;
+      }
+      box.style.display = "block";
+      shotBtn.textContent = "🖼 Masquer";
+    };
+    el.querySelector(".save").onclick = async () => {
+      const patch = {
+        ids:[id],
+        status: el.querySelector(".st").value,
+        severity: el.querySelector(".sv").value,
+        dev_note: el.querySelector(".nt").value
+      };
+      el.querySelector(".save").disabled = true;
+      absorb(await api("/api/update", patch), true);
+    };
+  });
+
+  renderBar();
+  saveUiState();   // les filtres courants deviennent ceux du prochain démarrage
+}
+
+function renderBar(){
+  $("#bar").style.display = selection.size ? "flex" : "none";
+  $("#selCount").textContent = selection.size + " sélectionné" + (selection.size>1?"s":"");
+}
+
+// ---------------------------------------------------------------- actions
+
+function awaitingAnnounce(){
+  return STATE.reports.filter(r => (STATE.publishable||[]).includes(r.status) && !r.published_at);
+}
+
+// Marquer « corrigé » ne publie rien : l'annonce reste un geste volontaire.
+// Ce bouton fait le pont — il rassemble tout ce qui attend d'être annoncé.
+$("#btnPending").onclick = async () => {
+  selection = new Set(awaitingAnnounce().map(r => String(r.id)));
+  render();
+  await $("#btnDiscord").onclick();
+};
+
+$("#btnRefresh").onclick = () => load(true);
+$("#btnDrawer").onclick = () => document.body.classList.toggle("drawer");
+$("#btnDrawerClose").onclick = () => document.body.classList.remove("drawer");
+$("#btnLogout").onclick = () => { rSaveSession(null); rCache = null; location.reload(); };
+$("#btnClear").onclick = () => { selection.clear(); render(); };
+$("#fSearch").oninput = e => { filters.search = e.target.value; render(); };
+$("#fUnpublished").onchange = e => { filters.unpublished = e.target.checked; render(); };
+$("#fGroup").onchange = () => render();
+
+$("#btnApply").onclick = async () => {
+  const patch = {ids:[...selection]};
+  if($("#bulkStatus").value) patch.status = $("#bulkStatus").value;
+  if($("#bulkSeverity").value) patch.severity = $("#bulkSeverity").value;
+  if($("#bulkNote").value.trim()) patch.dev_note = $("#bulkNote").value.trim();
+  if(Object.keys(patch).length < 2) return alert("Choisis au moins un statut, une sévérité ou une note.");
+  $("#btnApply").disabled = true;
+  absorb(await api("/api/update", patch), true);
+  $("#btnApply").disabled = false;
+  $("#bulkNote").value = "";
+};
+
+$("#btnDiscord").onclick = async () => {
+  const chosen = STATE.reports.filter(r => selection.has(String(r.id)));
+  const usable = chosen.filter(r => (STATE.publishable||[]).includes(r.status));
+  $("#dMsg").innerHTML = usable.length
+    ? (usable.length < chosen.length
+        ? `<div class="note">${chosen.length - usable.length} signalement(s) ignoré(s) : seuls « corrigé », « en cours » et « hors périmètre » sont annonçables.</div>`
+        : "")
+    : `<div class="err">Aucun des signalements sélectionnés n'est annonçable. Passe-les d'abord en « corrigé », « en cours » ou « hors périmètre ».</div>`;
+  $("#dSend").disabled = usable.length === 0;
+  await regen();
+  dlgDiscord.showModal();
+};
+
+async function regen(){
+  $("#lblTitleEn").style.display = $("#dBilingual").checked ? "block" : "none";
+  const res = await api("/api/preview", {
+    ids:[...selection],
+    title:$("#dTitle").value.trim(),
+    title_en:$("#dTitleEn").value.trim(),
+    thanks:$("#dThanks").checked,
+    bilingual:$("#dBilingual").checked
+  });
+  $("#dContent").value = res.content || "";
+}
+$("#dRegen").onclick = regen;
+$("#dThanks").onchange = regen;
+$("#dBilingual").onchange = regen;
+
+$("#dSend").onclick = async () => {
+  if(!confirm("Publier ce message sur le salon Discord ?")) return;
+  $("#dSend").disabled = true;
+  const res = await api("/api/publish", {
+    ids:[...selection].filter(id => {
+      const r = STATE.reports.find(x => String(x.id)===id);
+      return r && (STATE.publishable||[]).includes(r.status);
+    }),
+    content: $("#dContent").value,
+    title: $("#dTitle").value.trim(),
+    title_en: $("#dTitleEn").value.trim(),
+    thanks: $("#dThanks").checked,
+    bilingual: $("#dBilingual").checked
+  });
+  $("#dSend").disabled = false;
+  if(res.error){ $("#dMsg").innerHTML = `<div class="err">${esc(res.error)}</div>`; return; }
+  dlgDiscord.close();
+  selection.clear();
+  absorb(res);
+};
+
+$("#btnSettings").onclick = () => {
+  const c = STATE.config || {};
+  $("#sUrl").value = c.supabase_url || "";
+  $("#sUrlAuto").textContent = c.url_autodetected ? "— détectée dans SupabaseAuth.cs" : "";
+  $("#sKey").value = "";
+  $("#sKey").placeholder = c.has_key ? "clé enregistrée (" + c.key_hint + ") — laisser vide pour garder" : "clé service_role";
+  $("#sHook").value = "";
+  $("#sHook").placeholder = c.has_webhook ? (c.webhook_hint + " enregistré — laisser vide pour garder") : "https://discord.com/api/webhooks/…";
+  $("#sUser").value = c.discord_username || "";
+  $("#sMsg").innerHTML = c.env_locked && (c.env_locked.service_key || c.env_locked.supabase_url || c.env_locked.discord_webhook)
+    ? `<div class="ok">Certaines valeurs viennent de variables d'environnement : elles restent prioritaires sur ce formulaire.</div>` : "";
+  dlgSettings.showModal();
+};
+
+$("#sSave").onclick = async () => {
+  const body = {supabase_url:$("#sUrl").value.trim(), discord_username:$("#sUser").value.trim()};
+  if($("#sKey").value.trim()) body.service_key = $("#sKey").value.trim();
+  if($("#sHook").value.trim()) body.discord_webhook = $("#sHook").value.trim();
+  $("#sSave").disabled = true;
+  const res = await api("/api/config", body);
+  $("#sSave").disabled = false;
+  absorb(res, true);
+  if(!res.error) dlgSettings.close();
+  else $("#sMsg").innerHTML = `<div class="err">${esc(res.error)}</div>`;
+};
+
+// ------------------------------------------------- rejeu d'une partie
+
+let replayId = null, replayTimer = null;
+
+function openReplay(id){
+  replayId = id;
+  const r = STATE.reports.find(x => String(x.id) === id);
+  $("#rpOut").textContent = "—";
+  $("#rpMsg").innerHTML = STATE.replay_ready
+    ? `<div class="hint">Signalement <b>${esc((r && r.card_name) || id)}</b> — dump <code>${esc(r ? r.dump_kind : "")}</code>.</div>`
+    : `<div class="err">Le SDK .NET n'est pas visible depuis l'Atelier : installe .NET 8 puis relance l'outil.
+        Tu peux quand même afficher l'instantané joint (case « instantané seul »).</div>`;
+  dlgReplay.showModal();
+}
+
+$("#rpRun").onclick = async () => {
+  if(!replayId) return;
+  $("#rpRun").disabled = true;
+  $("#rpOut").textContent = "compilation et rejeu en cours…";
+  const res = await api("/api/replay", {
+    id: replayId,
+    turn: Number($("#rpTurn").value) || 0,
+    events: $("#rpEvents").checked,
+    snapshot: $("#rpSnapshot").checked
+  });
+  if(res.error){ $("#rpOut").textContent = res.error; $("#rpRun").disabled = false; return; }
+  poll(res.job);
+};
+
+function poll(job){
+  clearInterval(replayTimer);
+  replayTimer = setInterval(async () => {
+    const st = await api("/api/replay/poll", {job});
+    if(!st.done) return;
+    clearInterval(replayTimer);
+    $("#rpRun").disabled = false;
+    $("#rpOut").textContent = (st.output || "(aucune sortie)")
+      + (st.code ? "\n\n[code de sortie " + st.code + "]" : "");
+  }, 1200);
+}
+
+// ------------------------------------------------- dossier d'analyse (export)
+
+$("#btnPackage").onclick = async () => {
+  $("#btnPackage").disabled = true;
+  const res = await api("/api/package", {ids:[...selection]});
+  $("#btnPackage").disabled = false;
+  if(res.error){ alert(res.error); return; }
+  $("#pkBody").innerHTML = `
+    <div class="ok">Dossier écrit : <b>${esc(res.package)}</b> —
+      ${res.count} signalement(s) sur ${res.cards} carte(s)${res.dumps ? `, dont <b>${res.dumps}</b> partie(s) rejouable(s)` : ""}.</div>
+    <p class="hint">Fichiers (dans <code>Tools/reports/exports/</code>) :</p>
+    <pre class="path">${esc(res.md)}\n${esc(res.json)}</pre>
+    <p class="hint">Ouvre Claude Code à la racine du projet et demande-lui :</p>
+    <pre class="path" id="pkPrompt">Lis Tools/reports/exports/${esc(res.package)}.md et suis-en les consignes.</pre>
+    <button class="ghost" id="pkCopy">Copier la consigne</button>
+    <p class="hint">Il déposera sa réponse dans <code>Tools/reports/inbox/</code>.
+      Reviens ensuite ici, bouton <b>Réponses IA</b> : rien ne sera appliqué sans ta validation.</p>`;
+  $("#pkCopy").onclick = () => navigator.clipboard.writeText($("#pkPrompt").textContent);
+  dlgPackage.showModal();
+};
+
+// ------------------------------------------------- réponses d'analyse (import)
+
+let inboxData = [], inboxFile = null;
+
+$("#btnInbox").onclick = async () => {
+  const res = await api("/api/inbox");
+  inboxData = res.inbox || [];
+  renderInbox(res.dir);
+  dlgInbox.showModal();
+};
+
+function renderInbox(dir){
+  if(!inboxData.length){
+    inboxFile = null;
+    $("#ibBody").innerHTML = `<div class="hint">Aucune réponse en attente.
+      Les fichiers déposés dans <code>${esc(dir||"inbox/")}</code> apparaîtront ici.</div>`;
+    $("#ibApply").disabled = true; $("#ibDiscard").disabled = true;
+    return;
+  }
+  const f = inboxData[0];          // un fichier à la fois : on valide, il s'archive
+  inboxFile = f.file;
+  $("#ibApply").disabled = false; $("#ibDiscard").disabled = false;
+
+  const CONF = {high:"confiance haute", medium:"confiance moyenne", low:"confiance faible"};
+  $("#ibBody").innerHTML = `
+    <div class="hint">Fichier <b>${esc(f.file)}</b>${f.package?` · dossier <b>${esc(f.package)}</b>`:""}
+      ${inboxData.length>1?` · ${inboxData.length-1} autre(s) en attente`:""}</div>
+    ${(f.problems||[]).map(p => `<div class="err">${esc(p)}</div>`).join("")}
+    ${(f.entries||[]).map(e => `
+      <div class="rep ${esc(e.status||"")}" data-idx="${e.index}">
+        <div class="top">
+          <input type="checkbox" class="pick" ${e.applicable?"checked":""} ${e.applicable?"":"disabled"}>
+          <span class="card">${esc(e.card_name||"(carte inconnue)")}</span>
+          <span class="pill">${esc(e.current.join(", ")||"?")} → <b>${esc(e.status||"—")}</b></span>
+          ${e.severity?`<span class="pill">${esc(e.severity)}</span>`:""}
+          ${e.confidence?`<span class="pill ${e.confidence==="low"?"kind-bug":""}">${esc(CONF[e.confidence]||e.confidence)}</span>`:""}
+          <span class="spacer"></span>
+          <span class="meta">${e.ids.length} signalement(s)</span>
+        </div>
+        ${(e.warnings||[]).map(w => `<div class="note" style="margin:8px 0 0">${esc(w)}</div>`).join("")}
+        ${e.diagnosis?`<p class="msg"><i>${esc(e.diagnosis)}</i></p>`:""}
+        ${e.files.length?`<div class="ctx">${e.files.map(esc).join(" · ")}</div>`:""}
+        <div class="row">
+          <input type="text" class="nfr" placeholder="note joueur FR" value="${esc(e.note_fr)}">
+        </div>
+        <div class="row">
+          <input type="text" class="nen" placeholder="note joueur EN" value="${esc(e.note_en)}">
+        </div>
+      </div>`).join("")}`;
+}
+
+$("#ibApply").onclick = async () => {
+  const entries = [...$("#ibBody").querySelectorAll(".rep")].map(el => ({
+    index: Number(el.dataset.idx),
+    apply: el.querySelector(".pick").checked,
+    note_fr: el.querySelector(".nfr").value.trim(),
+    note_en: el.querySelector(".nen").value.trim()
+  }));
+  if(!entries.some(e => e.apply)) return alert("Aucune entrée cochée.");
+  $("#ibApply").disabled = true;
+  const res = await api("/api/inbox/apply", {file: inboxFile, entries});
+  $("#ibApply").disabled = false;
+  if(res.error){ $("#ibBody").insertAdjacentHTML("afterbegin", `<div class="err">${esc(res.error)}</div>`); return; }
+  absorb(res, false);
+  const left = await api("/api/inbox");
+  inboxData = left.inbox || [];
+  renderInbox(left.dir);
+  $("#ibBody").insertAdjacentHTML("afterbegin",
+    `<div class="ok">${res.applied} signalement(s) mis à jour${res.skipped?`, ${res.skipped} entrée(s) écartée(s)`:""}.
+     Ils sont prêts pour l'annonce (bouton « À annoncer »).</div>`);
+};
+
+$("#ibDiscard").onclick = async () => {
+  if(!inboxFile || !confirm("Archiver ce fichier sans rien appliquer ?")) return;
+  await api("/api/inbox/discard", {file: inboxFile});
+  const left = await api("/api/inbox");
+  inboxData = left.inbox || [];
+  renderInbox(left.dir);
+};
+
+$("#sTest").onclick = async () => {
+  $("#sTest").disabled = true;
+  const res = await api("/api/test-webhook", {});
+  $("#sTest").disabled = false;
+  $("#sMsg").innerHTML = res.error
+    ? `<div class="err">${esc(res.error)}</div>`
+    : `<div class="ok">Message de test envoyé — va voir le salon.</div>`;
+};
+
+$("#btnHistory").onclick = async () => {
+  const res = await api("/api/publications");
+  const p = res.publications || [];
+  $("#hBody").innerHTML = p.length ? p.map(x => `
+     <div class="rep" style="border-left-color:var(--gold)">
+       <div class="meta">${fmtDate(x.created_at)} · ${x.report_count} signalement(s) · ${esc(x.channel||"")}</div>
+       <p class="msg">${esc(x.content)}</p>
+     </div>`).join("") : `<div class="hint">Aucune annonce publiée pour l'instant.</div>`;
+  dlgHistory.showModal();
+};
+
+// ============================================================ MODE DISTANT (page hébergée)
+//
+// La page parle DIRECTEMENT à Supabase : connexion par un compte du jeu inscrit dans
+// card_report_admins (migration supabase_card_reports_remote.sql), lecture et mise à jour par la
+// RLS, annonce Discord par la fonction SQL card_reports_announce (pg_net + Vault : le webhook ne
+// quitte jamais la base). Ce qui a besoin du PC — rejeu, dossier pour Claude, réponses IA — n'existe
+// pas ici : ces routes répondent « hors du PC ». Les routes gardent la FORME des réponses du serveur
+// Python, pour que tout le reste de la page reste identique dans les deux modes.
+
+const R_STATUSES = ["new","triaged","in_progress","fixed","wontfix","duplicate","invalid"];
+const R_SEVERITIES = ["low","medium","high","critical"];
+const R_KINDS = ["bug","ux","translation","other"];
+const R_PUBLISHABLE = ["fixed","in_progress","wontfix"];
+const R_LIST_COLUMNS = "id,created_at,card_id,card_name,kind,message,lang,context,player_id,player_name,"
+  + "status,severity,dev_note,handled_at,published_at,dup_of,updated_at,dump_kind,shot_kb";
+const R_SESSION_KEY = "vtes_reports_session", R_UI_KEY = "vtes_reports_ui";
+let rCache = null, rFetchedAt = null;
+
+class NeedLogin extends Error { constructor(){ super("connexion requise"); } }
+
+function rSession(){ try{ return JSON.parse(localStorage.getItem(R_SESSION_KEY) || "null"); }catch(e){ return null; } }
+function rSaveSession(s){ try{ s ? localStorage.setItem(R_SESSION_KEY, JSON.stringify(s)) : localStorage.removeItem(R_SESSION_KEY); }catch(e){} }
+function rUi(){ try{ return JSON.parse(localStorage.getItem(R_UI_KEY) || "{}"); }catch(e){ return {}; } }
+
+async function rAuth(path, body){
+  const res = await fetch(REMOTE.url + "/auth/v1" + path, {
+    method:"POST", headers:{"Content-Type":"application/json", "apikey":REMOTE.anon_key}, body:JSON.stringify(body)});
+  const j = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(j.error_description || j.msg || j.error || ("Auth HTTP " + res.status));
+  return j;
+}
+function rStore(j){
+  const s = {access_token:j.access_token, refresh_token:j.refresh_token,
+             expires_at:Date.now() + (Number(j.expires_in)||3600)*1000, email:(j.user && j.user.email) || ""};
+  rSaveSession(s);
+  return s;
+}
+async function rToken(){
+  let s = rSession();
+  if(!s || !s.access_token) throw new NeedLogin();
+  if(Date.now() > s.expires_at - 60000){          // jeton presque périmé : on le renouvelle
+    try{ s = rStore(await rAuth("/token?grant_type=refresh_token", {refresh_token:s.refresh_token})); }
+    catch(e){ rSaveSession(null); throw new NeedLogin(); }
+  }
+  return s.access_token;
+}
+
+async function rRest(method, path, body, prefer){
+  const token = await rToken();
+  const headers = {"apikey":REMOTE.anon_key, "Authorization":"Bearer " + token,
+                   "Content-Type":"application/json", "Accept":"application/json"};
+  if(prefer) headers["Prefer"] = prefer;
+  const res = await fetch(REMOTE.url + "/rest/v1" + path,
+                          {method, headers, body: body === undefined ? undefined : JSON.stringify(body)});
+  if(res.status === 401){ rSaveSession(null); throw new NeedLogin(); }
+  const text = await res.text();
+  let j = null; try{ j = text ? JSON.parse(text) : null; }catch(e){ j = null; }
+  if(!res.ok){
+    const msg = j && (j.message || j.hint || j.details || j.error);
+    if(res.status === 404 && /function|relation|column/i.test(msg || text))
+      throw new Error("Supabase : " + (msg || text.slice(0,200)) + " — la migration supabase_card_reports_remote.sql a-t-elle été exécutée ?");
+    throw new Error(msg || ("Supabase HTTP " + res.status + (text ? " — " + text.slice(0,200) : "")));
+  }
+  return j;
+}
+
+function rLogin(){
+  return new Promise(resolve => {
+    const dlg = $("#dlgLogin");
+    $("#lgMsg").innerHTML = "";
+    dlg.oncancel = e => e.preventDefault();   // pas d'Échap : sans connexion la page n'a rien à montrer
+    $("#lgGo").onclick = async () => {
+      const email = $("#lgEmail").value.trim(), pass = $("#lgPass").value;
+      if(!email || !pass) return;
+      $("#lgGo").disabled = true;
+      try{
+        rStore(await rAuth("/token?grant_type=password", {email, password:pass}));
+        const admin = await rRest("POST", "/rpc/is_card_report_admin", {});
+        if(admin !== true){
+          rSaveSession(null);
+          throw new Error("Ce compte n'est pas inscrit comme administrateur des signalements (table card_report_admins, section 2 de la migration).");
+        }
+        $("#lgPass").value = "";
+        dlg.close();
+        resolve();
+      }catch(e){ $("#lgMsg").innerHTML = `<div class="err">${esc(e.message || String(e))}</div>`; }
+      $("#lgGo").disabled = false;
+    };
+    $("#lgPass").onkeydown = e => { if(e.key === "Enter") $("#lgGo").onclick(); };
+    if(!dlg.open) dlg.showModal();
+  });
+}
+
+function rMerge(rows){
+  if(!rCache || !Array.isArray(rows)) return;
+  const byId = new Map(rows.map(r => [String(r.id), r]));
+  rCache = rCache.map(r => byId.has(String(r.id)) ? Object.assign({}, r, byId.get(String(r.id))) : r);
+}
+function rSelected(ids){
+  const want = new Set((ids || []).map(String));
+  return (rCache || []).filter(r => want.has(String(r.id)));
+}
+// Colonnes ajoutees par une migration (shot_kb, dump_kind...) : si le projet ne l'a pas passee,
+// PostgREST repond 400 "column card_reports.X does not exist" ; on retire X et on retente (comme le
+// serveur Python, qui retombe sur select=*).
+let rColumns = R_LIST_COLUMNS;
+async function rSelectReports(){
+  for(let essai = 0; essai < 4; essai++){
+    try{
+      return await rRest("GET", "/card_reports?select=" + rColumns + "&order=created_at.desc&limit=2000");
+    }catch(e){
+      const m = /column card_reports\.(\w+) does not exist/.exec(String(e.message || e));
+      if(!m || !rColumns.split(",").includes(m[1])) throw e;
+      rColumns = rColumns.split(",").filter(c => c !== m[1]).join(",");
+    }
+  }
+  throw new Error("Supabase : trop de colonnes absentes dans card_reports.");
+}
+async function rState(force){
+  if(force || !rCache){
+    rCache = (await rSelectReports()) || [];
+    rFetchedAt = new Date().toISOString();
+  }
+  const s = rSession() || {};
+  return {
+    reports:rCache, error:"", fetched_at:rFetchedAt, demo:false, remote:true, account:s.email || "",
+    statuses:R_STATUSES, severities:R_SEVERITIES, kinds:R_KINDS, publishable:R_PUBLISHABLE,
+    inbox_count:0, replay_ready:false, ui:rUi(),
+    config:{supabase_url:REMOTE.url, has_key:true, has_webhook:true, discord_username:"Archiviste VTES",
+            thank_reporters:true, bilingual:true}
+  };
+}
+
+// --- le message Discord (même forme que build_message côté Python)
+const R_WORDS = {
+  fr:{title:"Signalements pris en compte — %s", fixed:"✅ **Corrigé**", in_progress:"🔧 **En cours de correction**",
+      wontfix:"📌 **Comportement voulu / hors périmètre**", count:" *(%d signalements)*",
+      thanks:"Merci à %s pour les signalements — continuez, c'est comme ça que le moteur s'affine.",
+      thanks_anon:"Merci à celles et ceux qui signalent : c'est comme ça que le moteur s'affine.",
+      others:" et les autres", nocard:"(sans carte)"},
+  en:{title:"Reports taken into account — %s", fixed:"✅ **Fixed**", in_progress:"🔧 **Being fixed**",
+      wontfix:"📌 **Working as intended / out of scope**", count:" *(%d reports)*",
+      thanks:"Thanks to %s for the reports — keep them coming, that's how the engine gets sharper.",
+      thanks_anon:"Thanks to everyone who reports: that's how the engine gets sharper.",
+      others:" and others", nocard:"(no card)"}
+};
+function rNoteFor(note, lang){
+  note = (note || "").trim();
+  if(!note.includes("||")) return note;
+  const parts = note.split("||").map(p => p.trim());
+  return lang === "fr" ? parts[0] : (parts.length > 1 ? parts[1] : parts[0]);
+}
+function rBlock(reports, lang, title, thanks){
+  const w = R_WORDS[lang] || R_WORDS.fr;
+  const d = new Date(), day = String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0") + "/" + d.getFullYear();
+  const lines = ["**" + (title || w.title.replace("%s", day)) + "**", ""];
+  for(const status of R_PUBLISHABLE){
+    const bucket = reports.filter(r => (r.status || "new") === status);
+    if(!bucket.length) continue;
+    lines.push(w[status] || status);
+    const seen = new Map();
+    for(const r of bucket){
+      const name = (r.card_name || "").trim() || w.nocard, key = name.toLowerCase();
+      if(!seen.has(key)) seen.set(key, {name, notes:[], count:0});
+      const e = seen.get(key);
+      e.count++;
+      const note = rNoteFor(r.dev_note, lang);
+      if(note && !e.notes.includes(note)) e.notes.push(note);
+    }
+    for(const e of seen.values()){
+      const suffix = e.count > 1 ? w.count.replace("%d", e.count) : "";
+      const note = e.notes.length ? " — " + e.notes.join(" / ") : "";
+      lines.push("• **" + e.name + "**" + note + suffix);
+    }
+    lines.push("");
+  }
+  if(thanks){
+    const names = [];
+    for(const r of reports){
+      const n = (r.player_name || "").trim();
+      if(n && !names.some(x => x.toLowerCase() === n.toLowerCase())) names.push(n);
+    }
+    lines.push(names.length
+      ? w.thanks.replace("%s", names.slice(0,15).join(", ") + (names.length > 15 ? w.others : ""))
+      : w.thanks_anon);
+  }
+  return lines.join("\n").trim();
+}
+function rBuildMessage(reports, title, thanks, bilingual, titleEn){
+  reports = reports.filter(r => R_PUBLISHABLE.includes(r.status || "new"));
+  if(!reports.length) return "";
+  const blocks = [rBlock(reports, "fr", title, thanks)];
+  if(bilingual) blocks.push(rBlock(reports, "en", titleEn, thanks));
+  return blocks.join("\n\n\n");
+}
+function rSplitLong(line, size){
+  const pieces = [];
+  while(line.length > size){
+    let cut = line.lastIndexOf(" ", size);
+    if(cut <= 0) cut = size;
+    pieces.push(line.slice(0, cut).trimEnd());
+    line = line.slice(cut).trimStart();
+  }
+  pieces.push(line);
+  return pieces;
+}
+function rSplit(text, size){
+  const out = []; let current = "";
+  for(const line of text.split("\n")){
+    for(const piece of rSplitLong(line, size)){
+      const candidate = current ? current + "\n" + piece : piece;
+      if(candidate.length > size && current){ out.push(current); current = piece; }
+      else current = candidate;
+    }
+  }
+  if(current) out.push(current);
+  return out.length ? out : [""];
+}
+
+// --- l'annonce : la base envoie (pg_net), on attend la réponse de Discord
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function rAnnounce(chunk){
+  const req = await rRest("POST", "/rpc/card_reports_announce", {p_content:chunk, p_username:"Archiviste VTES"});
+  for(let i = 0; i < 14; i++){                       // ~10 s : pg_net répond d'ordinaire en moins de 2 s
+    await sleep(700);
+    const r = await rRest("POST", "/rpc/card_reports_announce_result", {p_request:req});
+    if(!r) continue;
+    if(r.error) throw new Error("Discord injoignable — " + r.error);
+    if(r.status < 200 || r.status >= 300)
+      throw new Error("Discord a refusé le message (HTTP " + r.status + ") — " + (r.body || ""));
+    return true;
+  }
+  throw new Error("Pas de réponse de Discord après 10 s : vérifie le salon avant de réessayer (le message est peut-être parti).");
+}
+async function rPublish(body){
+  const ids = (body.ids || []).map(String).filter(id => {
+    const r = (rCache || []).find(x => String(x.id) === id);
+    return r && R_PUBLISHABLE.includes(r.status || "new");
+  });
+  let content = (body.content || "").trim();
+  if(!content) content = rBuildMessage(rSelected(ids), body.title, body.thanks !== false, body.bilingual !== false, body.title_en);
+  if(!content) return {error:"message vide"};
+  const chunks = rSplit(content, 1900);
+  for(let i = 0; i < chunks.length; i++){
+    await rAnnounce(chunks[i]);
+    if(i + 1 < chunks.length) await sleep(600);     // courtoisie anti rate-limit
+  }
+  const stamp = new Date().toISOString();
+  if(ids.length){
+    const rows = await rRest("PATCH", "/card_reports?id=in.(" + ids.map(encodeURIComponent).join(",") + ")",
+                             {published_at:stamp}, "return=representation");
+    rMerge(rows);
+  }
+  try{
+    await rRest("POST", "/card_report_publications",
+                {channel:"webhook", content, report_ids:ids, report_count:ids.length}, "return=minimal");
+  }catch(e){ console.warn("journal de publication non écrit :", e); }
+  return Object.assign(await rState(false), {published:ids.length, messages:chunks.length});
+}
+
+async function remoteApi(path, body){
+  const q = path.indexOf("?"), route = q < 0 ? path : path.slice(0, q);
+  const qs = new URLSearchParams(q < 0 ? "" : path.slice(q + 1));
+  body = body || {};
+  try{
+    switch(route){
+      case "/api/state":
+        return await rState(qs.get("refresh") === "1");
+      case "/api/update": {
+        const ids = (body.ids || []).map(String), patch = {};
+        for(const f of ["status","severity","dev_note","dup_of"]) if(f in body) patch[f] = body[f];
+        if(patch.status && !R_STATUSES.includes(patch.status)) return {error:"statut inconnu"};
+        if(patch.severity === "") patch.severity = null;
+        if(patch.severity && !R_SEVERITIES.includes(patch.severity)) return {error:"sévérité inconnue"};
+        if(!ids.length || !Object.keys(patch).length) return {error:"rien à mettre à jour"};
+        const rows = await rRest("PATCH", "/card_reports?id=in.(" + ids.map(encodeURIComponent).join(",") + ")",
+                                 patch, "return=representation");
+        if(!rows || !rows.length) return {error:"aucune ligne mise à jour : le compte n'est pas administrateur, ou le signalement n'existe plus"};
+        rMerge(rows);
+        return await rState(false);
+      }
+      case "/api/shot": {
+        const rows = await rRest("GET", "/card_reports?id=eq." + encodeURIComponent(qs.get("id") || "") + "&select=screenshot");
+        return {shot: rows && rows[0] ? rows[0].screenshot : null};
+      }
+      case "/api/publications": {
+        const rows = await rRest("GET", "/card_report_publications?select=id,created_at,channel,content,report_count&order=created_at.desc&limit=25");
+        return {publications: rows || []};
+      }
+      case "/api/preview":
+        return {content: rBuildMessage(rSelected(body.ids), body.title, body.thanks !== false, body.bilingual !== false, body.title_en)};
+      case "/api/publish":
+        return await rPublish(body);
+      case "/api/ui-state":
+        try{ localStorage.setItem(R_UI_KEY, JSON.stringify(body)); }catch(e){}
+        return {ok:true};
+      case "/api/inbox":
+        return {inbox:[], dir:"(hors du PC)"};
+      case "/api/test-webhook":
+        await rAnnounce("Test de l'atelier des signalements (page distante) — " + new Date().toLocaleString("fr-FR"));
+        return {ok:true};
+      default:
+        return {error:"Indisponible hors du PC : " + route + " — le rejeu, le dossier d'analyse et les réponses IA vivent dans l'atelier local."};
+    }
+  }catch(e){
+    if(e instanceof NeedLogin){ await rLogin(); return remoteApi(path, body); }
+    return {error:String(e.message || e)};
+  }
+}
+
+// ------------------------------------------------- mémoire des filtres
+
+// Les filtres vivent CÔTÉ SERVEUR (ui_state.json) : ils survivent au F5, au redémarrage de
+// l'outil, à un changement de port et à un autre navigateur. Supprimer le fichier remet tout à zéro.
+function applyUiState(ui){
+  if(!ui) return;
+  filters.search      = ui.search || "";
+  filters.status      = new Set(ui.status || []);
+  filters.kind        = new Set(ui.kind || []);
+  filters.unpublished = !!ui.unpublished;
+  filters.cluster     = ui.cluster || null;
+  $("#fSearch").value       = filters.search;
+  $("#fUnpublished").checked = filters.unpublished;
+  $("#fGroup").checked       = ui.group !== false;
+}
+
+let uiSaveTimer = null;
+function saveUiState(){
+  // Débounce : on écrit une fois la frappe finie, pas à chaque lettre.
+  clearTimeout(uiSaveTimer);
+  uiSaveTimer = setTimeout(() => api("/api/ui-state", {
+    search: filters.search,
+    status: [...filters.status],
+    kind: [...filters.kind],
+    unpublished: filters.unpublished,
+    cluster: filters.cluster,
+    group: $("#fGroup").checked
+  }), 500);
+}
+
+// initialisation des selects de la barre d'actions groupées
+(async function init(){
+  const first = await load(false);
+  applyUiState(STATE.ui);
+  render(first && first.error);
+  const fill = (sel, vals, labels) => {
+    for(const v of vals){
+      const o = document.createElement("option");
+      o.value = v; o.textContent = labels[v] || v;
+      sel.appendChild(o);
+    }
+  };
+  fill($("#bulkStatus"), STATE.statuses||[], LABEL_STATUS);
+  fill($("#bulkSeverity"), STATE.severities||[], LABEL_SEV);
+  $("#dThanks").checked = !!(STATE.config && STATE.config.thank_reporters);
+  $("#dBilingual").checked = STATE.config ? STATE.config.bilingual !== false : true;
+})();
+</script>
+</body>
+</html>
